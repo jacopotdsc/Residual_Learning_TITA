@@ -3,7 +3,7 @@
 #include <WholeBodyController.hpp>
 #include <DesiredConfiguration.hpp>
 #include <MPC.hpp>
-#include <LQR.hpp>
+// #include <LQR.hpp>
 
 #include <labrob_qpsolvers/qpsolvers.hpp>
 
@@ -29,7 +29,8 @@ class WalkingManager {
   void update(
       const labrob::RobotState& robot_state,
       const Eigen::Vector3d position_desired,
-      labrob::JointCommand& joint_command,
+      labrob::JointCommand& joint_torque, 
+      labrob::JointCommand& joint_acceleration,
       labrob::SolutionMPC& sol,
       labrob::infoPinocchio& pinocchio_info
   );
@@ -45,6 +46,7 @@ class WalkingManager {
   pinocchio::Data robot_data_;
   pinocchio::FrameIndex right_leg4_idx_;
   pinocchio::FrameIndex left_leg4_idx_;
+  pinocchio::FrameIndex base_idx_;
 
   double wheel_radius_;
 

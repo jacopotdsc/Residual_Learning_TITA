@@ -45,37 +45,38 @@ struct WholeBodyControllerParams {
   double mu;
 
   static WholeBodyControllerParams getDefaultParams();
+  static WholeBodyControllerParams getRobustParams();
+  static WholeBodyControllerParams getJumpParams();
 };
 
 class WholeBodyController {
  public:
   WholeBodyController(const WholeBodyControllerParams& params,
                       const pinocchio::Model& robot_model,
-                      const labrob::RobotState& initial_robot_state,
                       double sample_time,
                       std::map<std::string, double>& armature);
 
-  labrob::JointCommand
+  void
   compute_inverse_dynamics(
       const labrob::RobotState& robot_state,
-      const labrob::DesiredConfiguration& desired
+      const labrob::DesiredConfiguration& desired,
+      labrob::JointCommand& joint_torque, 
+      labrob::JointCommand& joint_acceleration
   );
 
   double wheel_radius_;
   double wheel_width_;
   double wheel_length_;
+
+  WholeBodyControllerParams params_;
   
  private:
-  pinocchio::Model robot_model_;
+  const pinocchio::Model* robot_model_;
   pinocchio::Data robot_data_;
 
   pinocchio::FrameIndex right_leg4_idx_;
   pinocchio::FrameIndex left_leg4_idx_;
   pinocchio::FrameIndex base_link_idx_;
-  
-  pinocchio::FrameIndex support_frame_id_;
-
-  pinocchio::SE3 T_rleg4_init_;
 
   Eigen::MatrixXd J_right_wheel_;
   Eigen::MatrixXd J_left_wheel_;
@@ -85,11 +86,7 @@ class WholeBodyController {
   Eigen::MatrixXd J_left_wheel_dot_;
   Eigen::MatrixXd J_base_link_dot_;
 
-  Eigen::VectorXd q_jnt_reg_;
-
   double sample_time_;
-
-  WholeBodyControllerParams params_;
 
   Eigen::VectorXd M_armature_;
 

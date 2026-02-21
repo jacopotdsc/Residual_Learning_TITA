@@ -88,15 +88,16 @@ void print_contacts(const mjModel* m, const mjData* d) {
 
 void apply_disturbance(mjModel* mj_model_ptr, mjData* mj_data_ptr, int& timestep_counter){
   double point[3]{0.0, 0.0, 0.0};
-  double force[3] {10.0, 0.0, 0.0}; // {110.0, -100.0, 110.0}; {-200.0, -160.0, -300.0};
+
+  double force[3] {100.0, -50.0, 100.0}; // {100.0, -50.0, 100.0}; {-200.0, -160.0, -300.0};
   double torque[3]{0.0, 0.0, 0.0};
 
   int torso_id = mj_name2id(mj_model_ptr, mjOBJ_BODY, "base_link");
 
-  if (timestep_counter == 2000) {
+  if (timestep_counter == 1000) {
     mj_applyFT(mj_model_ptr, mj_data_ptr, force, torque, point, torso_id, mj_data_ptr->qfrc_applied);
   }
-  if (timestep_counter == 2100) {
+  if (timestep_counter == 1100) {
     force[0] = -force[0];
     force[1] = -force[1];
     force[2] = -force[2];
@@ -221,18 +222,17 @@ int main() {
     labrob::RobotState robot_state = labrob::robot_state_from_mujoco(mj_model_ptr, mj_data_ptr);
     
     // Walking manager
-    labrob::JointCommand joint_command;
+    labrob::JointCommand joint_torque;
+    labrob::JointCommand joint_acceleration;
     labrob::SolutionMPC sol;
     Eigen::Vector3d position_desired = {0.0, 0.0, 0.35};
     labrob::infoPinocchio pinocchio_info;
-    walking_manager.update(robot_state, position_desired, joint_command, sol, pinocchio_info);
+    walking_manager.update(robot_state, position_desired, joint_torque, joint_acceleration, sol, pinocchio_info);
 
     // apply a disturbance
-    //apply_disturbance(mj_model_ptr, mj_data_ptr, timestep_counter);
+    // apply_disturbance(mj_model_ptr, mj_data_ptr, timestep_counter);
     ++timestep_counter;
-    
-    mj_step1(mj_model_ptr, mj_data_ptr);
-    
+
     if (first_frame == true) {
       mujoco_ui.render();
       continue;
@@ -242,7 +242,7 @@ int main() {
       int joint_id = mj_model_ptr->actuator_trnid[i * 2];
       std::string joint_name = std::string(mj_id2name(mj_model_ptr, mjOBJ_JOINT, joint_id));
       int jnt_qvel_idx = mj_model_ptr->jnt_dofadr[joint_id];
-      mj_data_ptr->ctrl[i] = joint_command[joint_name];
+      mj_data_ptr->ctrl[i] = joint_torque[joint_name];
 
       joint_vel_log_file << mj_data_ptr->qvel[jnt_qvel_idx] << " ";
       joint_eff_log_file << mj_data_ptr->ctrl[i] << " ";
@@ -250,6 +250,12 @@ int main() {
 
     mj_step2(mj_model_ptr, mj_data_ptr);
 
+  
+    // print_contacts(mj_model_ptr, mj_data_ptr);
+
+    // Eigen::Map<const Eigen::VectorXd> qacc(mj_data_ptr->qacc, mj_model_ptr->nv);
+    // std::cout << "qacc = " << qacc.transpose() << std::endl;
+    
     
     joint_vel_log_file << std::endl;
     joint_eff_log_file << std::endl;
@@ -262,15 +268,15 @@ int main() {
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
   // Stampa del tempo di esecuzione
-  //std::cout << "Controller period: " << duration << " microseconds" << std::endl;
+  // std::cout << "Controller period: " << duration << " us" << std::endl;
   
   
-  double sim_elapsed = end_sim - simstart;
-  double real_elapsed = std::chrono::duration<double>(end_time - start_time).count();
-  double RTF = sim_elapsed / real_elapsed;
-  //std::cout << "Simulated time: " << sim_elapsed << std::endl;
-  //std::cout << "Real time: " << real_elapsed << std::endl;
-  //std::cout << "Real-time factor: " << RTF << std::endl;
+  // double sim_elapsed = end_sim - simstart;
+  // double real_elapsed = std::chrono::duration<double>(end_time - start_time).count();
+  // double RTF = sim_elapsed / real_elapsed;
+  // std::cout << "Simulated time: " << sim_elapsed << std::endl;
+  // std::cout << "Real time: " << real_elapsed << std::endl;
+  // std::cout << "Real-time factor: " << RTF << std::endl;
 
   //mujoco_ui.render();
   }

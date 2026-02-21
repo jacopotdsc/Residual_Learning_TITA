@@ -43,7 +43,7 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
     walkingPlanner_ = walkingPlanner;
 
     // TODO: init using node handle.
-    controller_frequency_ = 500;                        // CONTROLLA!!!!!!
+    controller_frequency_ = 500;                                    // nominal control frequency 
     controller_timestep_msec_ = 1000 / controller_frequency_;
     
 
@@ -65,11 +65,11 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
     des_configuration_.com.vel = Eigen::Vector3d(0.0, 0.0, 0.0);
     des_configuration_.com.acc = Eigen::Vector3d::Zero();
     des_configuration_.lwheel.pos.p = Eigen::Vector3d(0.0, 0.2835, wheel_radius_);
-    // des_configuration_.lwheel.pos.R = Eigen::Matrix3d::Identity();     
+    des_configuration_.lwheel.pos.R = Eigen::Matrix3d::Identity();     
     des_configuration_.lwheel.vel = Eigen::Vector<double, 6>::Zero();
     des_configuration_.lwheel.acc = Eigen::Vector<double, 6>::Zero();
     des_configuration_.rwheel.pos.p = Eigen::Vector3d(0.0, -0.2835, wheel_radius_);
-    // des_configuration_.rwheel.pos.R = Eigen::Matrix3d::Identity();
+    des_configuration_.rwheel.pos.R = Eigen::Matrix3d::Identity();
     des_configuration_.rwheel.vel = Eigen::Vector<double, 6>::Zero();
     des_configuration_.rwheel.acc = Eigen::Vector<double, 6>::Zero();
     des_configuration_.base_link.pos =Eigen::Matrix3d::Identity();
@@ -79,33 +79,11 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
 
 
     // Init WBC:
-    auto params = WholeBodyControllerParams::getDefaultParams();
-    params.Kp_motion = 50.0;
-    params.Kd_motion = 30.0;   
-    // params.Kp_regulation = 0.0;            
-    // params.Kd_regulation = 1;                 
-
-    params.Kp_wheel = 50.0;       
-    params.Kd_wheel = 30.0;                 
-
-    params.weight_q_ddot = 1e-12;                
-    params.weight_com = 1.0;                     
-    params.weight_lwheel = 1.0;                 
-    params.weight_rwheel = 1.0;                 
-    params.weight_base = 0.01;              
-    params.weight_angular_momentum = 0.0001;   
-    params.weight_regulation = 0.0; 
-
-    params.cmm_selection_matrix_x = 1e-6;       
-    params.cmm_selection_matrix_y = 1e-6;       
-    params.cmm_selection_matrix_z = 1e-4;
-                       
-    params.mu = 0.9;                            
+    auto params = WholeBodyControllerParams::getRobustParams();
 
     whole_body_controller_ptr_ = std::make_shared<labrob::WholeBodyController>(
         params,
         robot_model_,
-        initial_robot_state,
         0.001 * controller_timestep_msec_,
         armatures
     );
@@ -140,7 +118,10 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
     Eigen::Vector<double, 6> current_rwheel_vel = J_right_wheel * qdot;
     Eigen::Vector3d curr_pr_vel = current_rwheel_vel.head<3>();
 
+    // plan the offline trajectory
+    walkingPlanner_.offline_plan(0.001 * controller_timestep_msec_, true);
 
+    // initialize the MPC
     Eigen::VectorXd x_IN(18);
     x_IN.segment<3>(0) = p_CoM;
     x_IN.segment<3>(3) = v_CoM;
@@ -181,7 +162,8 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
 void WalkingManager::update(
     const labrob::RobotState& robot_state,
     const Eigen::Vector3d position_desired,
-    labrob::JointCommand& joint_command,
+    labrob::JointCommand& joint_torque, 
+    labrob::JointCommand& joint_acceleration,
     labrob::SolutionMPC& sol,
     labrob::infoPinocchio& pinocchio_info
     ) {
@@ -256,14 +238,29 @@ void WalkingManager::update(
 
 
     // jump routine
-    //if (std::fabs(t_msec_ - 2000.0) < 0.5){
-    //    walkingPlanner_.jumpRoutine(t_msec_);
-    //}
+
+    // maximum height obstacle
+    // if (std::fabs(t_msec_ - 2000.0) < 0.5){
+    //     walkingPlanner_.jumpRoutine(t_msec_, 0.48);
+    // }
+
+    // 3-obstacle
+    if (std::fabs(t_msec_ - 1500.0) < 0.5){
+        walkingPlanner_.jumpRoutine(t_msec_, 0.15);
+    }
+
+    if (std::fabs(t_msec_ - 2500.0) < 0.5){
+        walkingPlanner_.jumpRoutine(t_msec_, 0.25);
+    }
+
+    if (std::fabs(t_msec_ - 3800.0) < 0.5){
+        walkingPlanner_.jumpRoutine(t_msec_, 0.40);
+    }
 
     mpc_.t_msec = t_msec_;
 
     // log mpc logs
-    if (static_cast<int>(t_msec_) % 1 == 0){
+    if (static_cast<int>(t_msec_) % 10 == 0){
         mpc_.record_logs = true;
     }
 
@@ -288,12 +285,13 @@ void WalkingManager::update(
     // x_IN.segment<3>(15) = sol.pr.vel;
 
 
+
     
-    auto t1 = std::chrono::system_clock::now();
+    // auto t1 = std::chrono::system_clock::now();
     mpc_.solve(x_IN);
-    auto t2 = std::chrono::system_clock::now();
-    auto delta_t = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-    //std::cout << "MPC took " << delta_t << " us" << std::endl;
+    // auto t2 = std::chrono::system_clock::now();
+    // auto delta_t = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    // std::cout << "MPC took " << delta_t << " us" << std::endl;
 
     sol = mpc_.get_solution();
     
@@ -302,7 +300,7 @@ void WalkingManager::update(
     des_configuration_.com.acc = sol.com.acc;
 
     des_configuration_.lwheel.pos.p.segment<2>(0) = sol.pl.pos.segment<2>(0);
-    des_configuration_.lwheel.pos.p(2) = sol.pl.pos(2) + wheel_radius_;             // z of the wheel center is distanciated of wheel radius from the contact 
+    des_configuration_.lwheel.pos.p(2) = sol.pl.pos(2) + wheel_radius_;             // z of the wheel center is distanciated of wheel radius from the contact (in the model of MPC which does not provide camber motion)
     des_configuration_.lwheel.vel.segment<3>(0) = sol.pl.vel.segment<3>(0);
     des_configuration_.lwheel.acc.segment<3>(0) = sol.pl.acc.segment<3>(0);
 
@@ -319,9 +317,19 @@ void WalkingManager::update(
     des_configuration_.base_link.vel = Eigen::Vector3d(0,0,sol.omega);
     des_configuration_.base_link.acc = Eigen::Vector3d(0,0,sol.alpha);
 
+    des_configuration_.in_contact = 1 - mpc_.get_jumpingState();
 
-    joint_command = whole_body_controller_ptr_->compute_inverse_dynamics(robot_state, des_configuration_);
+    // change WBC params in jump state
+    if (!des_configuration_.in_contact) {
+        auto jump_params = WholeBodyControllerParams::getJumpParams();                                       
+        whole_body_controller_ptr_->params_ = jump_params;
+    } else {                                                        // TODO: avoid updating the params every cycle 
+        auto params = WholeBodyControllerParams::getDefaultParams();
+        whole_body_controller_ptr_->params_ = params;     
+    }
 
+
+    whole_body_controller_ptr_->compute_inverse_dynamics(robot_state, des_configuration_, joint_torque, joint_acceleration);
 
 
 
@@ -329,12 +337,13 @@ void WalkingManager::update(
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     // std::cout << "WalkingManager::update() took " << elapsed_time << " us" << std::endl;
     
+    // std::cout << "t_msec_ " << t_msec_ << std::endl;
+
     // Update timing in milliseconds.
     // NOTE: assuming update() is actually called every controller_timestep_msec_
     //       milliseconds.
     t_msec_ += controller_timestep_msec_;
 
-    // std::cout << "t_msec_ " << t_msec_ << std::endl;
 
     // Log:
     state_log_file_

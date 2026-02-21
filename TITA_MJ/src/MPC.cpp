@@ -1,18 +1,5 @@
 #include <MPC.hpp>
-
-
 #include <chrono>
-
-
-double wrapToPi(double a) {
-  a = std::fmod(a + M_PI, 2.0 * M_PI);
-  if (a < 0) a += 2.0 * M_PI;
-  return a - M_PI;
-}
-
-double unwrapNear(double theta_wrapped, double theta_prev) {
-  return theta_prev + wrapToPi(theta_wrapped - theta_prev);
-}
 
 Eigen::Vector<double, labrob::MPC::NX> labrob::MPC::get_DFIP_state(Eigen::Vector<double, N_IN> x_IN,
                                                                    bool set_d = false){
@@ -110,15 +97,15 @@ void labrob::MPC::solve(Eigen::Vector<double, N_IN> x_IN){
   auto x0 = get_DFIP_state(x_IN);
   problemPtr_->set_x0(x0);
 
-  auto t0 = std::chrono::high_resolution_clock::now();
+  // auto t0 = std::chrono::high_resolution_clock::now();
 
   // solve the problem
   xs[0] = x0;   // to improve feasibility
   solver->solve(xs, us, SOLVER_MAX_ITER);
 
-  auto t1 = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double, std::milli> ms = t1 - t0;
-  //std::cout << "Solve time: " << ms.count() << " ms\n"<< std::endl;
+  // auto t1 = std::chrono::high_resolution_clock::now();
+  // std::chrono::duration<double, std::milli> ms = t1 - t0;
+  // std::cout << "Solve time: " << ms.count() << " ms\n"<< std::endl;
 
 
 
@@ -205,7 +192,8 @@ void labrob::MPC::solve(Eigen::Vector<double, N_IN> x_IN){
     // create folder if it does not exist
     std::string folder = "/tmp/mpc_data/" + std::to_string(t_msec);
     std::string command = "mkdir -p " + folder;
-    int _ = system(command.c_str());
+    const int ret = std::system(command.c_str());
+    (void)ret;
 
     // print trajectory to file
     std::string path_x = "/tmp/mpc_data/" + std::to_string(t_msec) + "/x.txt";
@@ -234,7 +222,6 @@ void labrob::MPC::solve(Eigen::Vector<double, N_IN> x_IN){
 
 void labrob::MPC::update_actionModel(){
   const double dt_ms = Δ * 1000.0;     // Delta in seconds
-  const double t0_ms = t_msec;         // current time in ms
 
   // running stages
   for (int i = 0; i < NH; ++i) {

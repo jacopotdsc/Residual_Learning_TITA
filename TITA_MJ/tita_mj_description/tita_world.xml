@@ -48,7 +48,8 @@
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.1 0.1 0.1" specular="0.9 0.9 0.9"/>
     <rgba haze="0.15 0.25 0.35 1"/>
-    <global azimuth="-140" elevation="-20" fovy="10"/>
+    <global azimuth="-140" elevation="-20"/>
+    <!-- <global azimuth="-140" elevation="-20" fovy="10"/> -->
   </visual>
 
   <asset>
@@ -112,6 +113,11 @@
     <site name="markerR" pos="0.0 -0.27 0.0925" size="0.017" rgba="0 0 1 1"/>
 
 
+
+    <!-- <body name="ellipsoid_static" pos="2.78 0 0.2">
+      <geom type="ellipsoid" size="0.05 0.60 0.2" rgba="1 0 0 1"
+            contype="1" conaffinity="1"/>
+    </body> -->
 
 
     <body name="base_link" pos="0.00000000 0.00000000 0.41700019" quat="1 0 0 0" childclass="robot">
@@ -193,6 +199,37 @@
               contype="0"
               conaffinity="0"/>
     </body>
+
+
+    <!-- spawn set an obstacle -->
+    <!-- <body name="box" pos="2.75 0 0">
+      <freejoint name="box_free"/>
+      <geom type="box" size="0.01 0.4 0.15" mass="1" rgba="1 0 0 1"/>
+    </body> -->
+
+
+    <body name="box1" pos="2.00 0 0">
+      <freejoint name="box_free1"/>
+      <geom type="box" size="0.01 0.4 0.05" mass="1" rgba="1 0 0 1"/>
+    </body>
+
+    <body name="box2" pos="3.25 0 0">
+      <freejoint name="box_free2"/>
+      <geom type="box" size="0.01 0.4 0.10" mass="1" rgba="1 0 0 1"/>
+    </body>
+
+    <body name="box3" pos="4.75 0 0">
+      <freejoint name="box_free3"/>
+      <geom type="box" size="0.01 0.4 0.15" mass="1" rgba="1 0 0 1"/>
+    </body>
+
+
+
+    <!-- <body name="box" pos="3.5 0 0">
+      <freejoint name="box_free"/>
+      <geom type="box" size="1.0 0.4 0.07" mass="1" rgba="1 0 0 1"/>
+    </body> -->
+
   </worldbody>
 
   <actuator>
