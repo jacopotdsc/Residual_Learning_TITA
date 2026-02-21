@@ -118,7 +118,7 @@ void labrob::MPC::solve(Eigen::Vector<double, N_IN> x_IN){
 
   auto t1 = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> ms = t1 - t0;
-  std::cout << "Solve time: " << ms.count() << " ms\n"<< std::endl;
+  //std::cout << "Solve time: " << ms.count() << " ms\n"<< std::endl;
 
 
 
@@ -195,6 +195,8 @@ void labrob::MPC::solve(Eigen::Vector<double, N_IN> x_IN){
   omega_   = w_curr + dt_ * alpha_;
   theta_   = theta_curr +  dt_ * w_curr;
 
+  contact_force_left_ = fcl;
+  contact_force_right_ = fcr;
 
 
 

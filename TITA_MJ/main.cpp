@@ -88,7 +88,7 @@ void print_contacts(const mjModel* m, const mjData* d) {
 
 void apply_disturbance(mjModel* mj_model_ptr, mjData* mj_data_ptr, int& timestep_counter){
   double point[3]{0.0, 0.0, 0.0};
-  double force[3] {110.0, -100.0, 110.0}; // {110.0, -100.0, 110.0}; {-200.0, -160.0, -300.0};
+  double force[3] {10.0, 0.0, 0.0}; // {110.0, -100.0, 110.0}; {-200.0, -160.0, -300.0};
   double torque[3]{0.0, 0.0, 0.0};
 
   int torso_id = mj_name2id(mj_model_ptr, mjOBJ_BODY, "base_link");
@@ -104,65 +104,12 @@ void apply_disturbance(mjModel* mj_model_ptr, mjData* mj_data_ptr, int& timestep
   }
 }
 
-
-labrob::RobotState robot_state_from_mujoco(mjModel* m, mjData* d) {
-labrob::RobotState robot_state;
-
-robot_state.position = Eigen::Vector3d(
-  d->qpos[0], d->qpos[1], d->qpos[2]
-);
-
-robot_state.orientation = Eigen::Quaterniond(
-    d->qpos[3], d->qpos[4], d->qpos[5], d->qpos[6]
-);
-
-robot_state.linear_velocity = robot_state.orientation.toRotationMatrix().transpose() *
-    Eigen::Vector3d(
-        d->qvel[0], d->qvel[1], d->qvel[2]
-    );
-
-robot_state.angular_velocity = Eigen::Vector3d(
-  d->qvel[3], d->qvel[4], d->qvel[5]
-);
-
-for (int i = 1; i < m->njnt; ++i) {
-  const char* name = mj_id2name(m, mjOBJ_JOINT, i);
-  robot_state.joint_state[name].pos = d->qpos[m->jnt_qposadr[i]];
-  robot_state.joint_state[name].vel = d->qvel[m->jnt_dofadr[i]];
-}
-
-static double force[6];
-static double result[3];
-Eigen::Vector3d sum = Eigen::Vector3d::Zero();
-robot_state.contact_points.resize(d->ncon);
-robot_state.contact_forces.resize(d->ncon);
-for (int i = 0; i < d->ncon; ++i) {
-  mj_contactForce(m, d, i, force);
-  //mju_rotVecMatT(result, force, d->contact[i].frame);
-  mju_mulMatVec(result, d->contact[i].frame, force, 3, 3);
-  for (int row = 0; row < 3; ++row) {
-      result[row] = 0;
-      for (int col = 0; col < 3; ++col) {
-          result[row] += d->contact[i].frame[3 * col + row] * force[col];
-      }
-  }
-  sum += Eigen::Vector3d(result);
-  for (int j = 0; j < 3; ++j) {
-    robot_state.contact_points[i](j) = d->contact[i].pos[j];
-    robot_state.contact_forces[i](j) = result[j];
-  }
-}
-
-robot_state.total_force = sum;
-
-return robot_state;
-}
-
 int main() {
   // Load MJCF (for Mujoco):
   const int kErrorLength = 1024;          // load error string length
   char loadError[kErrorLength] = "";
-  const char* mjcf_filepath = "../tita_mj_description/tita_world.xml";
+  //const char* mjcf_filepath = "/home/ubuntu/miniconda3/envs/tianshou/lib/python3.12/site-packages/gymnasium/envs/mujoco/assets/tita_mjx.xml"; 
+  const char* mjcf_filepath = "/home/ubuntu/Desktop/repo_rl/TITA-dynamic-obstacle-avoidance/TITA_MJ/tita_mj_description/tita_world.xml";
   mjModel* mj_model_ptr = mj_loadXML(mjcf_filepath, nullptr, loadError, kErrorLength);
   if (!mj_model_ptr) {
     std::cerr << "Error loading model: " << loadError << std::endl;
@@ -213,13 +160,16 @@ int main() {
     std::string joint_name = std::string(mj_id2name(mj_model_ptr, mjOBJ_JOINT, joint_id));
     int dof_id = mj_model_ptr->jnt_dofadr[joint_id];
     armatures[joint_name] = mj_model_ptr->dof_armature[dof_id];
+    //std::cout << "Joint: " << joint_name << " | Armature: " << armatures[joint_name] << std::endl;
   }
 
 
   // Walking Manager:
-  labrob::RobotState initial_robot_state = robot_state_from_mujoco(mj_model_ptr, mj_data_ptr);
+  labrob::RobotState initial_robot_state = labrob::robot_state_from_mujoco(mj_model_ptr, mj_data_ptr);
   labrob::WalkingManager walking_manager;
-  walking_manager.init(initial_robot_state, armatures);
+  labrob::walkingPlanner walking_planner = labrob::walkingPlanner(0.0, 0.0, 0.0, 0.25, 0.49);
+  labrob::infoPinocchio pinocchio_info;
+  walking_manager.init(initial_robot_state, armatures, walking_planner, pinocchio_info);
 
 
   // // zero gravity
@@ -238,25 +188,51 @@ int main() {
 
   int timestep_counter = 0;
 
+    //std::cout << "\n--- 2. MUJOCO ACTUATORS (CTRL ORDER) ---" << std::endl;
+    //std::cout << "Totale Attuatori (m->nu): " << mj_model_ptr->nu << std::endl;
+
+    for (int i = 0; i < mj_model_ptr->nu; ++i) {
+        // In MuJoCo, l'attuatore è collegato a un giunto tramite 'actuator_trnid'
+        // trnid[2*i] è l'ID del giunto, trnid[2*i+1] è il target (es. posizione/velocità)
+        int joint_id = mj_model_ptr->actuator_trnid[2 * i];
+        
+        // Recupera il nome del giunto controllato da questo attuatore
+        const char* joint_name = mj_id2name(mj_model_ptr, mjOBJ_JOINT, joint_id);
+        const char* actuator_name = mj_id2name(mj_model_ptr, mjOBJ_ACTUATOR, i);
+        //std::cout << "Ctrl Index " << i 
+        //          << " [Actuator: " << (actuator_name ? actuator_name : "???") << "]"
+        //          << " ---> Muove il giunto: " << (joint_name ? joint_name : "???") 
+        //          << std::endl;
+    }
+
   // Simulation loop:
+
   while (!mujoco_ui.windowShouldClose()) {
 
   auto start_time = std::chrono::high_resolution_clock::now();
 
   mjtNum simstart = mj_data_ptr->time;
   while( mj_data_ptr->time - simstart < 1.0/framerate ) { // non serve
-    
+    std::cout << "--------------\nheight: " << mj_data_ptr->qpos[2] << std::endl;
+    std::cout << "com height: " << mj_data_ptr->subtree_com[2] << std::endl;
+    std::cout << "xpos: " << mj_data_ptr->xpos[2] << std::endl;
+  
     mj_step1(mj_model_ptr, mj_data_ptr);
-    labrob::RobotState robot_state = robot_state_from_mujoco(mj_model_ptr, mj_data_ptr);
+    labrob::RobotState robot_state = labrob::robot_state_from_mujoco(mj_model_ptr, mj_data_ptr);
     
     // Walking manager
     labrob::JointCommand joint_command;
-    walking_manager.update(robot_state, joint_command);
+    labrob::SolutionMPC sol;
+    Eigen::Vector3d position_desired = {0.0, 0.0, 0.35};
+    labrob::infoPinocchio pinocchio_info;
+    walking_manager.update(robot_state, position_desired, joint_command, sol, pinocchio_info);
 
     // apply a disturbance
-    // apply_disturbance(mj_model_ptr, mj_data_ptr, timestep_counter);
-    // ++timestep_counter;
-
+    //apply_disturbance(mj_model_ptr, mj_data_ptr, timestep_counter);
+    ++timestep_counter;
+    
+    mj_step1(mj_model_ptr, mj_data_ptr);
+    
     if (first_frame == true) {
       mujoco_ui.render();
       continue;
@@ -274,11 +250,6 @@ int main() {
 
     mj_step2(mj_model_ptr, mj_data_ptr);
 
-    // print_contacts(mj_model_ptr, mj_data_ptr);
-
-    // Eigen::Map<const Eigen::VectorXd> qacc(mj_data_ptr->qacc, mj_model_ptr->nv);
-    // std::cout << "qacc = " << qacc.transpose() << std::endl;
-    
     
     joint_vel_log_file << std::endl;
     joint_eff_log_file << std::endl;
@@ -291,17 +262,17 @@ int main() {
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
   // Stampa del tempo di esecuzione
-  std::cout << "Controller period: " << duration << " us" << std::endl;
+  //std::cout << "Controller period: " << duration << " microseconds" << std::endl;
   
   
   double sim_elapsed = end_sim - simstart;
   double real_elapsed = std::chrono::duration<double>(end_time - start_time).count();
   double RTF = sim_elapsed / real_elapsed;
-  std::cout << "Simulated time: " << sim_elapsed << std::endl;
-  std::cout << "Real time: " << real_elapsed << std::endl;
-  std::cout << "Real-time factor: " << RTF << std::endl;
+  //std::cout << "Simulated time: " << sim_elapsed << std::endl;
+  //std::cout << "Real time: " << real_elapsed << std::endl;
+  //std::cout << "Real-time factor: " << RTF << std::endl;
 
-  mujoco_ui.render();
+  //mujoco_ui.render();
   }
 
   // Free memory (Mujoco):
