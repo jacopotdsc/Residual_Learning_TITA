@@ -41,7 +41,7 @@ class walkingPlanner {
     double z_max;
 
 
-    bool log_plan_ = false;
+    bool log_plan_ = true;
     
   public:  
   walkingPlanner(){};
@@ -50,7 +50,6 @@ class walkingPlanner {
 
     dt_ = dt;
     N_STEP_ = static_cast<int>(T / dt_);     //n. of timesteps
-    log_plan_ = log_plan;
 
     x_ref.setZero(NX, N_STEP_);
     u_ref.setZero(NU, N_STEP_-1);
@@ -362,8 +361,8 @@ class walkingPlanner {
     vars["NX"] = static_cast<double>(NX);
     vars["NU"] = static_cast<double>(NU);
     vars["T"] = static_cast<double>(T);
-    vars["dt"] = dt;
-    vars["N_STEP"] = static_cast<double>(N_STEP);
+    vars["dt"] = dt_;
+    vars["N_STEP"] = static_cast<double>(N_STEP_);
     vars["grav"] = grav;
     vars["m"] = m;
     
