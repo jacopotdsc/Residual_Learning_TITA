@@ -10,7 +10,6 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
                     ) {
     
     // Read URDF from file:
-    std::cout << "Initializing WalkingManager..." << std::endl;
     std::string robot_description_filename = "/home/ubuntu/Desktop/repo_rl/Residual_Learning_TITA/TITA_MJ/tita_description/tita.urdf";
 
     // Build Pinocchio model and data from URDF:
@@ -35,7 +34,6 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
         pinocchio::neutral(full_robot_model)
     );
     robot_data_ = pinocchio::Data(robot_model_);
-    std::cout << "Pinocchio model built with " << robot_model_.nv << " dofs." << std::endl;
     
     right_leg4_idx_ = robot_model_.getFrameId("right_leg_4");
     left_leg4_idx_ = robot_model_.getFrameId("left_leg_4");
@@ -92,7 +90,6 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
 
 
     // Init MPC:
-    std::cout << "Initializing MPC..." << std::endl;
     auto q = robot_state_to_pinocchio_joint_configuration(robot_model_, initial_robot_state);
     auto qdot = robot_state_to_pinocchio_joint_velocity(robot_model_, initial_robot_state);
 
@@ -123,9 +120,7 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
 
     // plan the offline trajectory
     //walkingPlanner_.offline_plan(0.001 * controller_timestep_msec_, true);
-    std::cout << "Planning offline trajectory..." << std::endl;
     walkingPlanner_.offline_plan();
-    std::cout << "Offline trajectory planned." << std::endl;
     
     // initialize the MPC
     Eigen::VectorXd x_IN(18);

@@ -117,7 +117,7 @@ print(initial_robot_state)
 walking_manager = wm.WalkingManager()
 
 print("Initializing walking planner...")
-wp = wm.WalkingPlanner(0.002, 0.0, 0.0, 0.0, 0.4, 0.25, 0.49)
+wp = wm.WalkingPlanner(0.002, 1.2, 0.0, 0.0, 0.4, 0.25, 0.49)
 print("Walking planner created. Now calling init...")
 res_init = walking_manager.init(initial_robot_state, armatures, wp)
 print("Walking manager init result:", res_init)

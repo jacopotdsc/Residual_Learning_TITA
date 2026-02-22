@@ -170,7 +170,7 @@ int main() {
   labrob::WalkingManager walking_manager;
   labrob::walkingPlanner walking_planner = labrob::walkingPlanner(
       0.002, // dt
-      0.0, // vel_lin
+      1.2, // vel_lin
       0.0, // vel_ang
       0.0, // vel_z
       0.4, // z0
