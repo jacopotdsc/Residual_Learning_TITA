@@ -28,7 +28,6 @@ class WalkingManager {
 
   void update(
       const labrob::RobotState& robot_state,
-      const Eigen::Vector3d position_desired,
       labrob::JointCommand& joint_torque, 
       labrob::JointCommand& joint_acceleration,
       labrob::SolutionMPC& sol,

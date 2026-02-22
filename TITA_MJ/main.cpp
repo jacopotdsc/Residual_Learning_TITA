@@ -110,7 +110,7 @@ int main() {
   const int kErrorLength = 1024;          // load error string length
   char loadError[kErrorLength] = "";
   //const char* mjcf_filepath = "/home/ubuntu/miniconda3/envs/tianshou/lib/python3.12/site-packages/gymnasium/envs/mujoco/assets/tita_mjx.xml"; 
-  const char* mjcf_filepath = "/home/ubuntu/Desktop/repo_rl/TITA-dynamic-obstacle-avoidance/TITA_MJ/tita_mj_description/tita_world.xml";
+  const char* mjcf_filepath = "/home/ubuntu/Desktop/repo_rl/Residual_Learning_TITA/TITA_MJ/tita_mj_description/tita_world.xml";
   mjModel* mj_model_ptr = mj_loadXML(mjcf_filepath, nullptr, loadError, kErrorLength);
   if (!mj_model_ptr) {
     std::cerr << "Error loading model: " << loadError << std::endl;
@@ -168,7 +168,14 @@ int main() {
   // Walking Manager:
   labrob::RobotState initial_robot_state = labrob::robot_state_from_mujoco(mj_model_ptr, mj_data_ptr);
   labrob::WalkingManager walking_manager;
-  labrob::walkingPlanner walking_planner; // = labrob::walkingPlanner(0.0, 0.0, 0.0, 0.25, 0.49);
+  labrob::walkingPlanner walking_planner = labrob::walkingPlanner(
+      0.002, // dt
+      0.0, // vel_lin
+      0.0, // vel_ang
+      0.0, // vel_z
+      0.4, // z0
+      0.25, // z_min
+      0.49); // z_max
   labrob::infoPinocchio pinocchio_info;
   walking_manager.init(initial_robot_state, armatures, walking_planner, pinocchio_info);
 
@@ -225,9 +232,8 @@ int main() {
     labrob::JointCommand joint_torque;
     labrob::JointCommand joint_acceleration;
     labrob::SolutionMPC sol;
-    Eigen::Vector3d position_desired = {0.0, 0.0, 0.35};
     labrob::infoPinocchio pinocchio_info;
-    walking_manager.update(robot_state, position_desired, joint_torque, joint_acceleration, sol, pinocchio_info);
+    walking_manager.update(robot_state, joint_torque, joint_acceleration, sol, pinocchio_info);
 
     // apply a disturbance
     // apply_disturbance(mj_model_ptr, mj_data_ptr, timestep_counter);

@@ -43,16 +43,20 @@ class walkingPlanner {
 
     bool log_plan_ = true;
     
-  public:  
-  walkingPlanner(){};
+  public: 
 
-  void offline_plan(const double& dt = 0.002, double vel_lin = 0.0, double vel_ang = 0.0, double vel_z = 0.0, double z_min = 0.25, double z_max = 0.49) {
-
+  walkingPlanner(const double& dt = 0.002, double vel_lin = 0.0, double vel_ang = 0.0, double vel_z = 0.0, double z0 = 0.4, double z_min = 0.25, double z_max = 0.49) {
+    
+    std::cout << "Creating WalkingPlanner with dt=" << dt << ", vel_lin=" << vel_lin << ", vel_ang=" << vel_ang << ", vel_z=" << vel_z 
+              << ", z0=" << z0 << ", z_min=" << z_min << ", z_max=" << z_max << std::endl;
     dt_ = dt;
     N_STEP_ = static_cast<int>(T / dt_);     //n. of timesteps
 
+    std::cout << "Initializing reference trajectories with " << N_STEP_ << " steps." << std::endl;
     x_ref.setZero(NX, N_STEP_);
+    std::cout << "State reference trajectory initialized." << std::endl;
     u_ref.setZero(NU, N_STEP_-1);
+    std::cout << "Reference trajectories initialized." << std::endl;
 
     // fast speed trajectory
     // double T1 = 1;
@@ -73,12 +77,15 @@ class walkingPlanner {
     theta0      = 0.0;
     x0          = 0.0;
     y0          = 0.0;
-    z0          = 0.4;
+    z0          = z0;
     z0_contact  = 0.0;
 
     z_min       = z_min;
     z_max       = z_max;
- 
+    std::cout << "WalkingPlanner created with " << N_STEP_ << " steps." << std::endl;
+  }
+  
+  void offline_plan() {
     double x = x0;
     double y = y0;
     double z = z0;

@@ -16,7 +16,8 @@ namespace py = pybind11;
 using namespace labrob;
 
 struct WalkingManagerResult {
-    JointCommand cmd;
+    JointCommand torque;
+    JointCommand acc;
     SolutionMPC solution;
     infoPinocchio pinocchio_info;
 };
@@ -230,15 +231,18 @@ PYBIND11_MODULE(wm, m) {
         });
 
     py::class_<WalkingManagerResult>(m, "WalkingManagerResult")
-        .def_readwrite("cmd", &WalkingManagerResult::cmd)
+        .def_readwrite("torque", &WalkingManagerResult::torque)
+        .def_readwrite("acc", &WalkingManagerResult::acc)
         .def_readwrite("solution", &WalkingManagerResult::solution)
         .def_readwrite("pinocchio_info", &WalkingManagerResult::pinocchio_info);
 
     py::class_<walkingPlanner>(m, "WalkingPlanner")
-        .def(py::init<double, double, double, double, double>(),
+        .def(py::init<double, double, double, double, double, double, double>(),
+            py::arg("dt"),
             py::arg("vel_lin"),
             py::arg("vel_ang"),
             py::arg("vel_z"),
+            py::arg("z0"),
             py::arg("z_min"),
             py::arg("z_max")
             )
@@ -267,14 +271,16 @@ PYBIND11_MODULE(wm, m) {
             py::overload_cast<>(&WalkingManager::get_walking_planner, py::const_),
             py::return_value_policy::reference_internal)
 
-        .def("update", [](WalkingManager &wm, const RobotState &state, const Eigen::Vector3d position_desired) {
-            JointCommand cmd;
+        .def("update", [](WalkingManager &wm, const RobotState &state) {
+            JointCommand joint_torque;
+            JointCommand joint_acceleration;
             SolutionMPC solution;
             infoPinocchio pinocchio_info;
-            wm.update(state, position_desired, cmd, solution, pinocchio_info);
+            wm.update(state, joint_torque, joint_acceleration, solution, pinocchio_info);
 
             WalkingManagerResult result;
-            result.cmd = cmd;
+            result.torque = joint_torque;
+            result.acc = joint_acceleration;
             result.solution = solution;
             result.pinocchio_info = pinocchio_info;
             return result;

@@ -4,3 +4,5 @@
 **/.vscode
 dependencies/
 **TITA_MJ/exec/
+compiled/
+MUJOCO_LOG.TXT
