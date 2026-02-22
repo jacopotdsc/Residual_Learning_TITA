@@ -254,7 +254,7 @@ PYBIND11_MODULE(wm, m) {
     
     py::class_<WalkingManager>(m, "WalkingManager")
         .def(py::init<>())
-        .def("init", [](WalkingManager &wm, const RobotState &state, py::dict &armatures, walkingPlanner& walking_planner) {
+        .def("init", [](WalkingManager &wm, const RobotState &state, py::dict &armatures, walkingPlanner& walking_planner, bool perform_jump_routine, double h_jump, double start_jump_at) {
             
             std::map<std::string, double> armatures_map;
             for (auto item : armatures) {
@@ -262,7 +262,7 @@ PYBIND11_MODULE(wm, m) {
             }
             WalkingManagerResult result;
             infoPinocchio pinocchio_info;
-            bool ret = wm.init(state, armatures_map, walking_planner, pinocchio_info);
+            bool ret = wm.init(state, armatures_map, walking_planner, perform_jump_routine, h_jump, start_jump_at, pinocchio_info);
             result.pinocchio_info = pinocchio_info;
             return result;
         })

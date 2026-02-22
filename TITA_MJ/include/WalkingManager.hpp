@@ -24,7 +24,7 @@ struct infoPinocchio {
 class WalkingManager {
  public:
 
-  bool init(const labrob::RobotState& initial_robot_state, std::map<std::string, double> &armatures, const labrob::walkingPlanner& walkingPlanner, labrob::infoPinocchio& pinocchio_info);
+  bool init(const labrob::RobotState& initial_robot_state, std::map<std::string, double> &armatures, const labrob::walkingPlanner& walkingPlanner, bool perform_jump_routine, double h_jump, double start_jump_at, labrob::infoPinocchio& pinocchio_info);
 
   void update(
       const labrob::RobotState& robot_state,
@@ -57,6 +57,9 @@ private:
 
   double controller_frequency_;
   double t_msec_ = 0;
+  bool perform_jump_routine_ = false;
+  double h_jump_ = 0.15;
+  double start_jump_at_ = 1500.0;
 
 
   labrob::walkingPlanner walkingPlanner_;

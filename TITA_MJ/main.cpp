@@ -177,7 +177,7 @@ int main() {
       0.25, // z_min
       0.49); // z_max
   labrob::infoPinocchio pinocchio_info;
-  walking_manager.init(initial_robot_state, armatures, walking_planner, pinocchio_info);
+  walking_manager.init(initial_robot_state, armatures, walking_planner, true, 0.15, 100.0, pinocchio_info);
 
 
   // // zero gravity

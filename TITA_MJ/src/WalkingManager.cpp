@@ -6,6 +6,9 @@ namespace labrob {
 bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
                      std::map<std::string, double> &armatures,
                     const labrob::walkingPlanner& walkingPlanner,
+                    bool perform_jump_routine,
+                    double h_jump,
+                    double start_jump_at,
                     labrob::infoPinocchio& pinocchio_info
                     ) {
     
@@ -45,6 +48,9 @@ bool WalkingManager::init(const labrob::RobotState& initial_robot_state,
     // TODO: init using node handle.
     controller_frequency_ = 500;                                    // nominal control frequency 
     controller_timestep_msec_ = 1000 / controller_frequency_;
+    perform_jump_routine_ = perform_jump_routine;
+    h_jump_ = h_jump;
+    start_jump_at_ = start_jump_at;
     
 
     wheel_radius_ = 0.0925;
@@ -245,7 +251,12 @@ void WalkingManager::update(
     // }
 
     // 3-obstacle
-    if (std::fabs(t_msec_ - 1500.0) < 0.5){
+    if (perform_jump_routine_) {
+        if (std::fabs(t_msec_ - start_jump_at_) < 0.5){
+            walkingPlanner_.jumpRoutine(t_msec_, h_jump_);
+        }
+    }
+    /*if (std::fabs(t_msec_ - 1500.0) < 0.5){
         walkingPlanner_.jumpRoutine(t_msec_, 0.15);
     }
 
@@ -255,7 +266,7 @@ void WalkingManager::update(
 
     if (std::fabs(t_msec_ - 3800.0) < 0.5){
         walkingPlanner_.jumpRoutine(t_msec_, 0.40);
-    }
+    }*/
 
     mpc_.t_msec = t_msec_;
 
